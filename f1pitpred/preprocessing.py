@@ -160,6 +160,18 @@ def preprocess_post_split_test(df, encoder):
     df = preprocess_post_split(df)
     return df
 
+def preprocess_new_data(df, encoder):
+    df = df.copy()
+    df = _process_rainfall(df)
+    df = _incomplete_races(df)
+    df = _process_track_name(df)
+    df = _process_missing_values(df)
+    df = _process_trackStatus(df)
+    df = _process_datatypes(df)
+    df = _process_target(df)
+    df = _process_remove_features(df)
+    df = _process_feature_encoding_new(df, encoder)
+    return df
 
 ## Train test split ------------------------------------------------------------
 
