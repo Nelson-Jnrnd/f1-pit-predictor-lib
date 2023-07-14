@@ -1,9 +1,0 @@
-README.md
-setup.py
-f1pitpred/__init__.py
-f1pitpred/loading.py
-f1pitpred.egg-info/PKG-INFO
-f1pitpred.egg-info/SOURCES.txt
-f1pitpred.egg-info/dependency_links.txt
-f1pitpred.egg-info/requires.txt
-f1pitpred.egg-info/top_level.txt
