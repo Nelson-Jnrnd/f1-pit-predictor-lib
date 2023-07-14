@@ -177,3 +177,17 @@ def get_train_test_split(df, test_size, return_groups=False):
     if return_groups:
         return train, test, train.groupby(['Year', 'RoundNumber', 'DriverNumber']).groups, test.groupby(['Year', 'RoundNumber', 'DriverNumber']).groups
     return train, test
+
+def get_preprocessed_train_test_split(df, test_size, return_groups=False):
+    df = preprocess_pre_split(df)
+    train, test, train_groups, test_groups = get_train_test_split(df, test_size, return_groups=True)
+    train, encoder = preprocess_post_split_train(train)
+    test = preprocess_post_split_test(test, encoder)
+    train.dropna(inplace=True)
+    test.dropna(inplace=True)
+    if return_groups:
+        return train, test, train_groups, test_groups
+    return train, test
+
+def get_x_y(df):
+    return df.drop(['is_pitting'], axis=1), df['is_pitting']
