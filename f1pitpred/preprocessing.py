@@ -2,7 +2,6 @@ import pandas as pd
 import numpy as np
 from sklearn.preprocessing import OneHotEncoder
 
-
 ## Rainfall -------------------------------------------------------------------
 
 def _process_rainfall(df): # Removes races with rain
@@ -182,7 +181,9 @@ def preprocess_new_data(df, encoder):
 def _get_races_grouped(df):
     return df.groupby(['Year', 'RoundNumber', 'DriverNumber'])
 
-def get_train_test_split(df, test_size, return_groups=False):
+def get_train_test_split(df, test_size, return_groups=False, random_state=None):
+    if random_state is not None:
+        np.random.seed(random_state)
     groups = _get_races_grouped(df).groups
     groups_keys = list(groups.keys())
     np.random.shuffle(groups_keys)
@@ -194,9 +195,9 @@ def get_train_test_split(df, test_size, return_groups=False):
         return train, test, train.groupby(['Year', 'RoundNumber', 'DriverNumber']).groups, test.groupby(['Year', 'RoundNumber', 'DriverNumber']).groups
     return train, test
 
-def get_preprocessed_train_test_split(df, test_size, return_groups=False):
+def get_preprocessed_train_test_split(df, test_size, return_groups=False, random_state=None):
     df = preprocess_pre_split(df)
-    train, test, train_groups, test_groups = get_train_test_split(df, test_size, return_groups=True)
+    train, test, train_groups, test_groups = get_train_test_split(df, test_size, return_groups=True, random_state=random_state)
     train, encoder = preprocess_post_split_train(train)
     test = preprocess_post_split_test(test, encoder)
     train.dropna(inplace=True)
