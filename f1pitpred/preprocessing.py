@@ -9,11 +9,14 @@ def _process_rainfall(df): # Removes races with rain
     rain = df.groupby(['Year', 'RoundNumber', 'DriverNumber'])['Compound'].transform(lambda x: x[x.str.contains('INTERMEDIATE|WET')].count())
     return df[rain == 0].reset_index(drop=True)
 
+## Pitstops -------------------------------------------------------------------
+def _process_pitstops(df):
+    df['PitStatus'] = df.groupby(['Year', 'RoundNumber', 'DriverNumber'])['PitStatus'].shift(-1, fill_value='NoPit')
+    return df
 ## Incomplete races -----------------------------------------------------------
 def _incomplete_races(df):
     return df.groupby(['Year', 'RoundNumber', 'DriverNumber']).filter(lambda x: x['LapNumber'].max() + 3 >= x['TotalLaps'].max()).reset_index(drop=True)
 ## TrackName ------------------------------------------------------------------
-
 def _process_track_name(df):
     df['Track'] = df['Track'].str.replace(' ', '_')
     return df
@@ -136,6 +139,7 @@ def preprocess_pre_split(df):
     df = df.copy()
     df = _process_rainfall(df)
     df = _incomplete_races(df)
+    df = _process_pitstops(df)
     df = _process_track_name(df)
     df = _process_missing_values(df)
     return df
