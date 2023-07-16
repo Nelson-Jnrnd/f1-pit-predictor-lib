@@ -128,13 +128,13 @@ def plot_tyres(laps, ax):
         The axes with the plotted tyre compounds
     """
     for idx, lap in laps.iterrows():
-        if lap['Compound_HARD']:
+        if lap['Compound_SOFT']:
             ax.axvspan(idx-1, idx, facecolor='red', alpha=1, zorder=-1, label='Soft', ymin=0.99)
             #ax.axhline(y=0.99, xmin=idx, xmax=idx+1, linewidth=1, color='red', zorder=0)
         elif lap['Compound_MEDIUM']:
             ax.axvspan(idx-1, idx, facecolor='yellow', alpha=1, zorder=-1, label='Medium', ymin=0.99)
             #ax.axhline(y=0.99, xmin=idx, xmax=idx+1, linewidth=1, color='yellow', zorder=0)
-        elif lap['Compound_SOFT']:
+        elif lap['Compound_HARD']:
             ax.axvspan(idx-1, idx, facecolor='grey', alpha=1, zorder=-1, label='Hard', ymin=0.99)
             #ax.axhline(y=0.99, xmin=idx, xmax=idx+1, linewidth=1, color='grey', zorder=0)
         elif lap['Compound_INTERMEDIATE']:
