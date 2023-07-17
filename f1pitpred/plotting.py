@@ -56,6 +56,10 @@ def plot_race_predictions(x, y, proba, ax, color='cyan', marker='X', label='Pred
     ax : matplotlib Axes
         The axes with the plotted points
     """
+    x['index'] = x['LapNumber']
+    x = x.set_index('index')
+    y.index = x.index
+
     ax.hlines(y=0.5, xmin=x['LapNumber'].min(), xmax=x['TotalLaps'].max(), linewidth=1, colors='black', linestyles='dotted', zorder=0)
     indexes = np.where(y == 1)
     for idx in indexes:
@@ -93,6 +97,9 @@ def plot_stoppages(laps, ax):
     ax : matplotlib Axes
         The axes with the plotted stoppages
     """
+    laps['index'] = laps['LapNumber']
+    laps = laps.set_index('index')
+
     for idx, lap in laps.iterrows():
         if lap['Red']:
             ax.axvspan(idx, idx+1, facecolor='red', alpha=0.3, zorder=0, label='Red Flag')
@@ -127,6 +134,9 @@ def plot_tyres(laps, ax):
     ax : matplotlib Axes
         The axes with the plotted tyre compounds
     """
+    laps['index'] = laps['LapNumber']
+    laps = laps.set_index('index')
+
     for idx, lap in laps.iterrows():
         if lap['Compound_SOFT']:
             ax.axvspan(idx-1, idx, facecolor='red', alpha=1, zorder=-1, label='Soft', ymin=0.99)
