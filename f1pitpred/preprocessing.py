@@ -16,7 +16,7 @@ def _process_pitstops(df):
 ## Tires ----------------------------------------------------------------------
 def _process_tires(df):
     df['NextCompound'] = df.groupby(['Year', 'RoundNumber', 'DriverNumber'])['Compound'].shift(-2)
-    return df.loc[df['PitStatus'] == 'InLap'].reset_index(drop=True)
+    return df
 ## Incomplete races -----------------------------------------------------------
 def _incomplete_races(df):
     return df.groupby(['Year', 'RoundNumber', 'DriverNumber']).filter(lambda x: x['LapNumber'].max() + 3 >= x['TotalLaps'].max()).reset_index(drop=True)
@@ -161,6 +161,7 @@ def preprocess_pre_split(df, target):
     elif target == 'tire':
         df = _process_pitstops(df)
         df = _process_tires(df)
+        df = df.loc[df['PitStatus'] == 'InLap'].reset_index(drop=True)
     df = _process_track_name(df)
     df = _process_missing_values(df)
     return df
@@ -196,11 +197,11 @@ def preprocess_new_data(df, encoder, target='pit'):
         df = _process_tires(df)
     df = _process_track_name(df)
     df = _process_missing_values(df)
-    df = _process_trackStatus(df)
-    df = _process_datatypes(df)
     df = _process_target(df)
     df = _process_remove_features(df)
     df = _process_feature_encoding_new(df, encoder)
+    df = _process_trackStatus(df)
+    df = _process_datatypes(df)
     return df
 
 ## Train test split ------------------------------------------------------------
