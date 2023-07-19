@@ -197,11 +197,11 @@ def preprocess_new_data(df, encoder, target='pit'):
         df = _process_tires(df)
     df = _process_track_name(df)
     df = _process_missing_values(df)
-    df = _process_target(df)
-    df = _process_remove_features(df)
     df = _process_feature_encoding_new(df, encoder)
     df = _process_trackStatus(df)
     df = _process_datatypes(df)
+    df = _process_target(df)
+    df = _process_remove_features(df)
     return df
 
 ## Train test split ------------------------------------------------------------
