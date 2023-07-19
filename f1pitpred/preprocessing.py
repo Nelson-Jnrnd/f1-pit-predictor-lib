@@ -12,6 +12,11 @@ def _process_rainfall(df): # Removes races with rain
 def _process_pitstops(df):
     df['PitStatus'] = df.groupby(['Year', 'RoundNumber', 'DriverNumber'])['PitStatus'].shift(-1, fill_value='NoPit')
     return df
+
+## Tires ----------------------------------------------------------------------
+def _process_tires(df):
+    df['NextCompound'] = df.groupby(['Year', 'RoundNumber', 'DriverNumber'])['Compound'].shift(-2)
+    return df.loc[df['PitStatus'] == 'InLap'].reset_index(drop=True)
 ## Incomplete races -----------------------------------------------------------
 def _incomplete_races(df):
     return df.groupby(['Year', 'RoundNumber', 'DriverNumber']).filter(lambda x: x['LapNumber'].max() + 3 >= x['TotalLaps'].max()).reset_index(drop=True)
@@ -123,7 +128,10 @@ def _process_remove_features(df):
 ## Feature encoding ------------------------------------------------------------
 
 def _process_feature_encoding(df):
-    categorical_features = ['Compound', 'Track']
+    if 'NextCompound' in df.columns:
+        categorical_features = ['Compound', 'Track', 'NextCompound']
+    else:
+        categorical_features = ['Compound', 'Track']
     one_hot_encoder = OneHotEncoder(sparse_output=False, handle_unknown='ignore')
     one_hot_encoder.fit(df[categorical_features])
     one_hot_encoded = one_hot_encoder.transform(df[categorical_features])
@@ -133,19 +141,26 @@ def _process_feature_encoding(df):
     return df, one_hot_encoder
 
 def _process_feature_encoding_new(df, encoder):
-    categorical_features = ['Compound', 'Track']
+    if 'NextCompound' in df.columns:
+        categorical_features = ['Compound', 'Track', 'NextCompound']
+    else:
+        categorical_features = ['Compound', 'Track']
     one_hot_encoded = encoder.transform(df[categorical_features])
     one_hot_encoded = pd.DataFrame(one_hot_encoded, columns=encoder.get_feature_names_out(categorical_features))
     df = df.join(one_hot_encoded)
     df.drop(categorical_features, axis=1, inplace=True)
     return df
 
-def preprocess_pre_split(df):
+def preprocess_pre_split(df, target):   
     df = df.copy()
     df = _process_rainfall(df)
     df = _incomplete_races(df)
     df = _remove_unusual_races(df)
-    df = _process_pitstops(df)
+    if target == 'pit':
+        df = _process_pitstops(df)
+    elif target == 'tire':
+        df = _process_pitstops(df)
+        df = _process_tires(df)
     df = _process_track_name(df)
     df = _process_missing_values(df)
     return df
@@ -202,8 +217,8 @@ def get_train_test_split(df, test_size, return_groups=False, random_state=None):
         return train, test, train.groupby(['Year', 'RoundNumber', 'DriverNumber']).groups, test.groupby(['Year', 'RoundNumber', 'DriverNumber']).groups
     return train, test
 
-def get_preprocessed_train_test_split(df, test_size, return_groups=False, random_state=None):
-    df = preprocess_pre_split(df)
+def get_preprocessed_train_test_split(df, test_size, return_groups=False, random_state=None, target='pit'):
+    df = preprocess_pre_split(df, target)
     train, test, train_groups, test_groups = get_train_test_split(df, test_size, return_groups=True, random_state=random_state)
     train, encoder = preprocess_post_split_train(train)
     test = preprocess_post_split_test(test, encoder)
@@ -213,5 +228,8 @@ def get_preprocessed_train_test_split(df, test_size, return_groups=False, random
         return train, test, encoder, train_groups, test_groups
     return train, test, encoder
 
-def get_x_y(df):
+def get_x_y_pit(df):
     return df.drop(['is_pitting'], axis=1), df['is_pitting']
+
+def get_x_y_tires(df):
+    return df.drop(['is_pitting', 'NextCompound_SOFT', 'NextCompound_MEDIUM', 'NextCompound_HARD', 'NextCompound_nan'], axis=1), df[['NextCompound_SOFT', 'NextCompound_MEDIUM', 'NextCompound_HARD']]
