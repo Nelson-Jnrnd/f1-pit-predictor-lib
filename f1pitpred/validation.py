@@ -2,6 +2,7 @@ import os
 import pickle
 import numpy as np
 from tensorflow.keras import models
+from f1pitpred.preprocessing import preprocess_new_data
 
 class model:
     def __init__(self, model_name, model_type, model_path):
@@ -37,3 +38,6 @@ class model:
             return self.model.predict(X)
         else:
             raise ValueError('Model type not supported')
+        
+    def preprocess_data(self, X):
+        return preprocess_new_data(X, self.encoder)

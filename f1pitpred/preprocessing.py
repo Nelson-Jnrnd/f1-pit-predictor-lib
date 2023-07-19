@@ -16,6 +16,12 @@ def _process_pitstops(df):
 def _incomplete_races(df):
     return df.groupby(['Year', 'RoundNumber', 'DriverNumber']).filter(lambda x: x['LapNumber'].max() + 3 >= x['TotalLaps'].max()).reset_index(drop=True)
 ## TrackName ------------------------------------------------------------------
+
+### Remove unusual races
+def _remove_unusual_races(df): # Remove races with more than 4 pitstops
+    nb_pitstops = df.groupby(['Year', 'RoundNumber', 'DriverNumber'])['NumberOfPitStops'].transform(lambda x: x.max())
+    return df[nb_pitstops <= 4].reset_index(drop=True)
+
 def _process_track_name(df):
     df['Track'] = df['Track'].str.replace(' ', '_')
     return df
@@ -111,7 +117,7 @@ def _process_target(df):
 def _process_remove_features(df):
     df.drop(['LapStartTime', 'DriverNumber', 'Team', 'DriverAhead', 
     'AirTemp', 'Humidity', 'Pressure', 'Rainfall', 'TrackTemp', 'WindDirection', 'WindSpeed',
-    'PitStatus', 'IsAccurate', 'Year', 'RoundNumber'], axis=1, inplace=True)
+    'PitStatus', 'IsAccurate', 'Year', 'RoundNumber', 'NumberOfPitStops'], axis=1, inplace=True)
     return df
 
 ## Feature encoding ------------------------------------------------------------
@@ -138,6 +144,7 @@ def preprocess_pre_split(df):
     df = df.copy()
     df = _process_rainfall(df)
     df = _incomplete_races(df)
+    df = _remove_unusual_races(df)
     df = _process_pitstops(df)
     df = _process_track_name(df)
     df = _process_missing_values(df)
@@ -203,8 +210,8 @@ def get_preprocessed_train_test_split(df, test_size, return_groups=False, random
     train.dropna(inplace=True)
     test.dropna(inplace=True)
     if return_groups:
-        return train, test, train_groups, test_groups
-    return train, test
+        return train, test, encoder, train_groups, test_groups
+    return train, test, encoder
 
 def get_x_y(df):
     return df.drop(['is_pitting'], axis=1), df['is_pitting']
