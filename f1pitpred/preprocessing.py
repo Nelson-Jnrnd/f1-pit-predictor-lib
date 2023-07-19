@@ -185,10 +185,15 @@ def preprocess_post_split_test(df, encoder):
     df = preprocess_post_split(df)
     return df
 
-def preprocess_new_data(df, encoder):
+def preprocess_new_data(df, encoder, target='pit'):
     df = df.copy()
     df = _process_rainfall(df)
     df = _incomplete_races(df)
+    if target == 'pit':
+        df = _process_pitstops(df)
+    elif target == 'tire':
+        df = _process_pitstops(df)
+        df = _process_tires(df)
     df = _process_track_name(df)
     df = _process_missing_values(df)
     df = _process_trackStatus(df)
