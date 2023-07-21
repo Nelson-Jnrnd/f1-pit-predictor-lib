@@ -164,26 +164,18 @@ def preprocess_pre_split(df, target):
         df = df.loc[df['PitStatus'] == 'InLap'].reset_index(drop=True)
     df = _process_track_name(df)
     df = _process_missing_values(df)
-    return df
-
-def preprocess_post_split(df):
+    df = _process_target(df)
     df = _process_trackStatus(df)
-    df = _process_datatypes(df)
-    df = _process_remove_features(df)
     return df
 
 def preprocess_post_split_train(df):
     df = df.copy()
-    df = _process_target(df)
     df, encoder = _process_feature_encoding(df)
-    df = preprocess_post_split(df)
     return df, encoder
 
 def preprocess_post_split_test(df, encoder):
     df = df.copy()
-    df = _process_target(df)
     df = _process_feature_encoding_new(df, encoder)
-    df = preprocess_post_split(df)
     return df
 
 def preprocess_new_data(df, encoder, target='pit'):
@@ -228,6 +220,8 @@ def get_preprocessed_train_test_split(df, test_size, return_groups=False, random
     train, test, train_groups, test_groups = get_train_test_split(df, test_size, return_groups=True, random_state=random_state)
     train, encoder = preprocess_post_split_train(train)
     test = preprocess_post_split_test(test, encoder)
+    train = _process_remove_features(train)
+    test = _process_remove_features(test)
     train.dropna(inplace=True)
     test.dropna(inplace=True)
     if return_groups:
@@ -239,3 +233,85 @@ def get_x_y_pit(df):
 
 def get_x_y_tires(df):
     return df.drop(['is_pitting', 'NextCompound_SOFT', 'NextCompound_MEDIUM', 'NextCompound_HARD', 'NextCompound_nan'], axis=1), df[['NextCompound_SOFT', 'NextCompound_MEDIUM', 'NextCompound_HARD']]
+
+
+## Time series management ------------------------------------------------------
+
+def create_sequences(data, sequence_length):
+    # Sort the data by 'LapStartTime' to ensure temporal order
+    data = data.sort_values('LapStartTime')
+
+    # Group the data by races using 'DriverNumber', 'RoundNumber', and 'Year'
+    grouped = data.groupby(['DriverNumber', 'RoundNumber', 'Year'])
+
+    # Initialize lists to store sequences and corresponding targets
+    sequences = []
+    targets = []
+
+    # Process each race group separately
+    for _, race_group in grouped:
+        # Extract lap data for the race
+        laps_data = race_group.values
+
+        # Calculate the total number of sequences that can be created for this race
+        num_sequences = len(laps_data) - sequence_length
+
+        # Create overlapping sequences for this race
+        for i in range(num_sequences):
+            sequence = laps_data[i:i+sequence_length]
+            target = laps_data[i+sequence_length]  # LapNumber of the next lap (target)
+
+            # Append the sequence and target to the respective lists
+            sequences.append(pd.DataFrame(sequence, columns=data.columns))
+            targets.append(target)
+        
+    # Convert the lists to numpy arrays
+    #sequences = np.array(sequences)
+    #targets = np.array(targets)
+
+
+    return sequences, targets
+
+def get_preprocessed_sequences(df, test_size, sequence_length, return_groups=False, random_state=None, target='pit'):
+    """"
+    Returns sequences and targets for train and test sets
+
+    Parameters
+    ----------
+    df : pandas.DataFrame
+        Data to be split
+    test_size : float
+        Fraction of data to be used for test set
+    sequence_length : int
+        Length of the sequences to be created
+    return_groups : bool, default False
+        Whether to return the groups used for the train test split
+    random_state : int, default None
+        Random state for reproducibility
+    target : str, default 'pit'
+        Target variable to be used for the sequences
+    Returns
+    -------
+    sequences_train : list
+        List of sequences for the train set
+    targets_train : list
+        List of targets for the train set
+    sequences_test : list
+        List of sequences for the test set
+    targets_test : list
+        List of targets for the test set
+    encoder : sklearn.preprocessing.LabelEncoder
+        Encoder used to encode the categorical variables
+    """
+    df = preprocess_pre_split(df, target)
+    train, test, train_groups, test_groups = get_train_test_split(df, test_size, return_groups=True, random_state=random_state)
+    train, encoder = preprocess_post_split_train(train)
+    test = preprocess_post_split_test(test, encoder)
+    train.dropna(inplace=True)
+    test.dropna(inplace=True)
+    sequences_train, targets_train = create_sequences(train, sequence_length)
+    sequences_test, targets_test = create_sequences(test, sequence_length)
+    
+    sequences_train = [_process_remove_features(sequence) for sequence in sequences_train]
+    sequences_test = [_process_remove_features(sequence) for sequence in sequences_test]
+    return sequences_train, targets_train, sequences_test, targets_test, encoder
