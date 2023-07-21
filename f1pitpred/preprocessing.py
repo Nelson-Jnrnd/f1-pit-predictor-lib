@@ -263,7 +263,7 @@ def create_sequences(data, sequence_length):
 
             # Append the sequence and target to the respective lists
             sequences.append(pd.DataFrame(sequence, columns=data.columns))
-            targets.append(target)
+            targets.append(pd.Series(target, index=data.columns))
         
     # Convert the lists to numpy arrays
     #sequences = np.array(sequences)
@@ -312,6 +312,8 @@ def get_preprocessed_sequences(df, test_size, sequence_length, return_groups=Fal
     sequences_train, targets_train = create_sequences(train, sequence_length)
     sequences_test, targets_test = create_sequences(test, sequence_length)
     
-    sequences_train = [_process_remove_features(sequence) for sequence in sequences_train]
-    sequences_test = [_process_remove_features(sequence) for sequence in sequences_test]
+    sequences_train = [_process_remove_features(sequence).drop(['is_pitting'], axis=1) for sequence in sequences_train]
+    sequences_test = [_process_remove_features(sequence).drop(['is_pitting'], axis=1) for sequence in sequences_test]
+    targets_train = [target['is_pitting'] for target in targets_train]
+    targets_test = [target['is_pitting'] for target in targets_test]
     return sequences_train, targets_train, sequences_test, targets_test, encoder
