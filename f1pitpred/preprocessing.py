@@ -119,10 +119,13 @@ def _process_target(df):
 
 ## Remove features -------------------------------------------------------------
 
-def _process_remove_features(df):
-    df.drop(['LapStartTime', 'DriverNumber', 'Team', 'DriverAhead', 
+def _get_features_to_remove():
+    return ['LapStartTime', 'DriverNumber', 'Team', 'DriverAhead', 
     'AirTemp', 'Humidity', 'Pressure', 'Rainfall', 'TrackTemp', 'WindDirection', 'WindSpeed',
-    'PitStatus', 'IsAccurate', 'Year', 'RoundNumber', 'NumberOfPitStops'], axis=1, inplace=True)
+    'PitStatus', 'IsAccurate', 'Year', 'RoundNumber', 'NumberOfPitStops']
+
+def _process_remove_features(df):
+    df.drop(_get_features_to_remove(), axis=1, inplace=True)
     return df
 
 ## Feature encoding ------------------------------------------------------------
@@ -262,12 +265,14 @@ def create_sequences(data, sequence_length):
             target = laps_data[i+sequence_length]  # LapNumber of the next lap (target)
 
             # Append the sequence and target to the respective lists
-            sequences.append(pd.DataFrame(sequence, columns=data.columns))
-            targets.append(pd.Series(target, index=data.columns))
+            #sequences.append(pd.DataFrame(sequence, columns=data.columns))
+            sequences.append(sequence)
+            #targets.append(pd.Series(target, index=data.columns))
+            targets.append(target)
         
     # Convert the lists to numpy arrays
-    #sequences = np.array(sequences)
-    #targets = np.array(targets)
+    sequences = np.array(sequences)
+    targets = np.array(targets)
 
 
     return sequences, targets
@@ -312,8 +317,14 @@ def get_preprocessed_sequences(df, test_size, sequence_length, return_groups=Fal
     sequences_train, targets_train = create_sequences(train, sequence_length)
     sequences_test, targets_test = create_sequences(test, sequence_length)
     
-    sequences_train = [_process_remove_features(sequence).drop(['is_pitting'], axis=1) for sequence in sequences_train]
-    sequences_test = [_process_remove_features(sequence).drop(['is_pitting'], axis=1) for sequence in sequences_test]
-    targets_train = [target['is_pitting'] for target in targets_train]
-    targets_test = [target['is_pitting'] for target in targets_test]
+    cols = train.columns.to_numpy()
+    cols_id_delete = list(map(lambda col : np.where(cols == col)[0][0], _get_features_to_remove()))
+    sequences_train = np.delete(sequences_train, cols_id_delete, axis=2)
+    sequences_test = np.delete(sequences_test, cols_id_delete, axis=2)
+    #sequences_train = [_process_remove_features(sequence).drop(['is_pitting'], axis=1) for sequence in sequences_train]
+    #sequences_test = [_process_remove_features(sequence).drop(['is_pitting'], axis=1) for sequence in sequences_test]
+    col = np.where(cols == 'is_pitting')[0][0]
+    targets_train = targets_train[:, col]
+    targets_test = targets_test[:, col]
+    
     return sequences_train, targets_train, sequences_test, targets_test, encoder
