@@ -117,12 +117,19 @@ def _process_target(df):
     df['is_pitting'] = df['is_pitting'].astype('bool')
     return df
 
+## Add features ----------------------------------------------------------------
+
+def _process_add_features(df):
+    df['RacePercentage'] = df['LapNumber'] / df['TotalLaps']
+    #df['LapTimeDiff'] = df.groupby(['Year', 'RoundNumber', 'DriverNumber'])['LapTime'].diff()
+    return df
+
 ## Remove features -------------------------------------------------------------
 
 def _get_features_to_remove():
     return ['LapStartTime', 'DriverNumber', 'Team', 'DriverAhead', 
     'AirTemp', 'Humidity', 'Pressure', 'Rainfall', 'TrackTemp', 'WindDirection', 'WindSpeed',
-    'PitStatus', 'IsAccurate', 'Year', 'RoundNumber', 'NumberOfPitStops']
+    'PitStatus', 'IsAccurate', 'Year', 'RoundNumber', 'NumberOfPitStops', 'LapNumber', 'TotalLaps']
 
 def _process_remove_features(df):
     df.drop(_get_features_to_remove(), axis=1, inplace=True)
@@ -169,6 +176,7 @@ def preprocess_pre_split(df, target):
     df = _process_missing_values(df)
     df = _process_target(df)
     df = _process_trackStatus(df)
+    df = _process_add_features(df)
     return df
 
 def preprocess_post_split_train(df):
@@ -196,6 +204,7 @@ def preprocess_new_data(df, encoder, target='pit'):
     df = _process_trackStatus(df)
     df = _process_datatypes(df)
     df = _process_target(df)
+    df = _process_add_features(df)
     df = _process_remove_features(df)
     return df
 
@@ -326,5 +335,10 @@ def get_preprocessed_sequences(df, test_size, sequence_length, return_groups=Fal
     col = np.where(cols == 'is_pitting')[0][0]
     targets_train = targets_train[:, col]
     targets_test = targets_test[:, col]
+
+    sequences_train = np.array(sequences_train).astype(np.float32)
+    targets_train = np.array(targets_train).astype(np.float32)
+    sequences_test = np.array(sequences_test).astype(np.float32)
+    targets_test = np.array(targets_test).astype(np.float32)
     
     return sequences_train, targets_train, sequences_test, targets_test, encoder
