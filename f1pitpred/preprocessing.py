@@ -120,7 +120,7 @@ def _process_target(df):
 ## Add features ----------------------------------------------------------------
 
 def _process_add_features(df):
-    df['RacePercentage'] = df['LapNumber'] / df['TotalLaps']
+    #df['RacePercentage'] = df['LapNumber'] / df['TotalLaps']
     #df['LapTimeDiff'] = df.groupby(['Year', 'RoundNumber', 'DriverNumber'])['LapTime'].diff()
     return df
 
@@ -129,7 +129,7 @@ def _process_add_features(df):
 def _get_features_to_remove():
     return ['LapStartTime', 'DriverNumber', 'Team', 'DriverAhead', 
     'AirTemp', 'Humidity', 'Pressure', 'Rainfall', 'TrackTemp', 'WindDirection', 'WindSpeed',
-    'PitStatus', 'IsAccurate', 'Year', 'RoundNumber', 'NumberOfPitStops', 'LapNumber', 'TotalLaps']
+    'PitStatus', 'IsAccurate', 'Year', 'RoundNumber']#, 'NumberOfPitStops', 'LapNumber', 'TotalLaps']
 
 def _process_remove_features(df):
     df.drop(_get_features_to_remove(), axis=1, inplace=True)
