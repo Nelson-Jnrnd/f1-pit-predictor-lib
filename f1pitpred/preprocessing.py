@@ -133,7 +133,7 @@ def _process_add_features(df):
 def _get_features_to_remove():
     return ['LapStartTime', 'DriverNumber', 'Team', 'DriverAhead', 
     'AirTemp', 'Humidity', 'Pressure', 'Rainfall', 'TrackTemp', 'WindDirection', 'WindSpeed',
-    'PitStatus', 'PitStatusShift', 'IsAccurate', 'Year', 'RoundNumber']#, 'NumberOfPitStops', 'LapNumber', 'TotalLaps']
+    'PitStatus', 'PitStatusShift', 'IsAccurate', 'Year', 'RoundNumber', 'NumberOfPitStops'] #'LapNumber', 'TotalLaps']
 
 def _process_remove_features(df):
     df.drop(_get_features_to_remove(), axis=1, inplace=True)
@@ -232,8 +232,8 @@ def get_train_test_split(df, test_size, return_groups=False, random_state=None):
         return train, test, train.groupby(['Year', 'RoundNumber', 'DriverNumber']).groups, test.groupby(['Year', 'RoundNumber', 'DriverNumber']).groups
     return train, test
 
-def get_preprocessed_train_test_split(df, test_size, return_groups=False, random_state=None, target='pit'):
-    df = preprocess_pre_split(df, target)
+def get_preprocessed_train_test_split(df, test_size, return_groups=False, random_state=None, target='pit', drop=True):
+    df = preprocess_pre_split(df, target, drop=drop)
     train, test, train_groups, test_groups = get_train_test_split(df, test_size, return_groups=True, random_state=random_state)
     train, encoder = preprocess_post_split_train(train)
     test = preprocess_post_split_test(test, encoder)
