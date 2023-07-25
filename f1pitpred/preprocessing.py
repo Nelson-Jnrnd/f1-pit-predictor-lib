@@ -10,7 +10,7 @@ def _process_rainfall(df): # Removes races with rain
 
 ## Pitstops -------------------------------------------------------------------
 def _process_pitstops(df):
-    df['PitStatus'] = df.groupby(['Year', 'RoundNumber', 'DriverNumber'])['PitStatus'].shift(-1, fill_value='NoPit')
+    df['PitStatusShift'] = df.groupby(['Year', 'RoundNumber', 'DriverNumber'])['PitStatus'].shift(-1, fill_value='NoPit')
     return df
 
 ## Tires ----------------------------------------------------------------------
@@ -59,11 +59,13 @@ def _process_trackStatus(df):
 ## Missing Data ----------------------------------------------------------------
 
 def _process_missing_values(df):
+    df['DriverAhead'] = df['DriverAhead'].astype('str')
     # TODO fill the missing values better
     df.fillna({
         'DistanceToDriverAhead': -1,
         'GapToLeader': -1,
         'IntervalToPositionAhead': -1,
+        'DriverAhead': -1
     }, inplace=True)
 
     # drop all rows with missing laptime
@@ -113,8 +115,10 @@ def _process_datatypes(df):
 ## Add target ------------------------------------------------------------------
 
 def _process_target(df):
-    df['is_pitting'] = df['PitStatus'] == 'InLap'
+    df['is_pitting'] = df['PitStatusShift'] == 'InLap'
     df['is_pitting'] = df['is_pitting'].astype('bool')
+    df = df.loc[df['PitStatusShift'] != 'OutLap']
+    df = df.loc[df['PitStatus'] != 'OutLap']
     return df
 
 ## Add features ----------------------------------------------------------------
@@ -129,7 +133,7 @@ def _process_add_features(df):
 def _get_features_to_remove():
     return ['LapStartTime', 'DriverNumber', 'Team', 'DriverAhead', 
     'AirTemp', 'Humidity', 'Pressure', 'Rainfall', 'TrackTemp', 'WindDirection', 'WindSpeed',
-    'PitStatus', 'IsAccurate', 'Year', 'RoundNumber']#, 'NumberOfPitStops', 'LapNumber', 'TotalLaps']
+    'PitStatus', 'PitStatusShift', 'IsAccurate', 'Year', 'RoundNumber']#, 'NumberOfPitStops', 'LapNumber', 'TotalLaps']
 
 def _process_remove_features(df):
     df.drop(_get_features_to_remove(), axis=1, inplace=True)
@@ -161,7 +165,7 @@ def _process_feature_encoding_new(df, encoder):
     df.drop(categorical_features, axis=1, inplace=True)
     return df
 
-def preprocess_pre_split(df, target):   
+def preprocess_pre_split(df, target, drop=True):   
     df = df.copy()
     df = _process_rainfall(df)
     df = _incomplete_races(df)
@@ -171,7 +175,8 @@ def preprocess_pre_split(df, target):
     elif target == 'tire':
         df = _process_pitstops(df)
         df = _process_tires(df)
-        df = df.loc[df['PitStatus'] == 'InLap'].reset_index(drop=True)
+        if drop:
+            df = df.loc[df['PitStatusShift'] == 'InLap'].reset_index(drop=True)
     df = _process_track_name(df)
     df = _process_missing_values(df)
     df = _process_target(df)
@@ -286,7 +291,7 @@ def create_sequences(data, sequence_length):
 
     return sequences, targets
 
-def get_preprocessed_sequences(df, test_size, sequence_length, return_groups=False, random_state=None, target='pit'):
+def get_preprocessed_sequences(df, test_size, sequence_length, return_groups=False, random_state=None, target='pit', drop=False):
     """"
     Returns sequences and targets for train and test sets
 
@@ -317,24 +322,43 @@ def get_preprocessed_sequences(df, test_size, sequence_length, return_groups=Fal
     encoder : sklearn.preprocessing.LabelEncoder
         Encoder used to encode the categorical variables
     """
-    df = preprocess_pre_split(df, target)
+    df = preprocess_pre_split(df, target, drop=False)
     train, test, train_groups, test_groups = get_train_test_split(df, test_size, return_groups=True, random_state=random_state)
     train, encoder = preprocess_post_split_train(train)
     test = preprocess_post_split_test(test, encoder)
     train.dropna(inplace=True)
     test.dropna(inplace=True)
+
     sequences_train, targets_train = create_sequences(train, sequence_length)
     sequences_test, targets_test = create_sequences(test, sequence_length)
     
     cols = train.columns.to_numpy()
-    cols_id_delete = list(map(lambda col : np.where(cols == col)[0][0], _get_features_to_remove()))
+    target_col = ['is_pitting']
+    if target == 'tire':
+        target_col = ['is_pitting', 'NextCompound_SOFT', 'NextCompound_MEDIUM', 'NextCompound_HARD', 'NextCompound_nan']
+        if drop:
+            pit_col_id = np.where(cols == 'is_pitting')[0][0]
+            pitting_train = np.where(targets_train[:, pit_col_id] == 1)
+            pitting_test = np.where(targets_test[:, pit_col_id] == 1)
+            sequences_train = sequences_train[pitting_train]
+            sequences_test = sequences_test[pitting_test]
+            targets_train = targets_train[pitting_train]
+            targets_test = targets_test[pitting_test]
+
+    cols_id_delete = list(map(lambda col : np.where(cols == col)[0][0], _get_features_to_remove() + target_col))
+    
     sequences_train = np.delete(sequences_train, cols_id_delete, axis=2)
     sequences_test = np.delete(sequences_test, cols_id_delete, axis=2)
-    #sequences_train = [_process_remove_features(sequence).drop(['is_pitting'], axis=1) for sequence in sequences_train]
-    #sequences_test = [_process_remove_features(sequence).drop(['is_pitting'], axis=1) for sequence in sequences_test]
-    col = np.where(cols == 'is_pitting')[0][0]
+    
+    if target == 'tire':
+        target_col = ['is_pitting', 'NextCompound_SOFT', 'NextCompound_MEDIUM', 'NextCompound_HARD']
+    col = np.where(np.isin(cols, target_col))[0]
     targets_train = targets_train[:, col]
     targets_test = targets_test[:, col]
+
+    if target == 'pit':
+        targets_train = np.ravel(targets_train)
+        targets_test = np.ravel(targets_test)
 
     sequences_train = np.array(sequences_train).astype(np.float32)
     targets_train = np.array(targets_train).astype(np.float32)
@@ -342,3 +366,18 @@ def get_preprocessed_sequences(df, test_size, sequence_length, return_groups=Fal
     targets_test = np.array(targets_test).astype(np.float32)
     
     return sequences_train, targets_train, sequences_test, targets_test, encoder
+
+
+def get_preprocessed_sequences_new(df, encoder, seq_size, target='pit'):
+    preproc1 = preprocess_pre_split(df, target)
+    preproc2 = preprocess_post_split_test(preproc1, encoder)
+    preproc2.dropna(inplace=True)
+    
+    seq_x, _ = create_sequences(preproc2, seq_size)
+    
+    cols = preproc2.columns.to_numpy()
+    cols_id_delete = list(map(lambda col : np.where(cols == col)[0][0], _get_features_to_remove() + ['is_pitting']))
+    
+    seq_x = np.delete(seq_x, cols_id_delete, axis=-1)
+    
+    return seq_x, np.delete(cols, cols_id_delete)
