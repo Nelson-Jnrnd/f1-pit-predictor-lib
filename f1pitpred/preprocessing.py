@@ -205,8 +205,8 @@ def preprocess_new_data(df, encoder, target='pit'):
         df = _process_tires(df)
     df = _process_track_name(df)
     df = _process_missing_values(df)
-    df = _process_feature_encoding_new(df, encoder)
     df = _process_trackStatus(df)
+    df = _process_feature_encoding_new(df, encoder)
     df = _process_datatypes(df)
     df = _process_target(df)
     df = _process_add_features(df)
@@ -333,6 +333,7 @@ def get_preprocessed_sequences(df, test_size, sequence_length, return_groups=Fal
     sequences_test, targets_test = create_sequences(test, sequence_length)
     
     cols = train.columns.to_numpy()
+    
     target_col = ['is_pitting']
     if target == 'tire':
         target_col = ['is_pitting', 'NextCompound_SOFT', 'NextCompound_MEDIUM', 'NextCompound_HARD', 'NextCompound_nan']
@@ -376,8 +377,9 @@ def get_preprocessed_sequences_new(df, encoder, seq_size, target='pit'):
     seq_x, _ = create_sequences(preproc2, seq_size)
     
     cols = preproc2.columns.to_numpy()
+    
     cols_id_delete = list(map(lambda col : np.where(cols == col)[0][0], _get_features_to_remove() + ['is_pitting']))
     
-    seq_x = np.delete(seq_x, cols_id_delete, axis=-1)
+    seq_x = np.delete(seq_x, cols_id_delete, axis=2)
     
     return seq_x, np.delete(cols, cols_id_delete)
